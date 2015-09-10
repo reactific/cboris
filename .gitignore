@@ -5,6 +5,8 @@
 .cache
 .history
 .lib/
+.idea/rebel_project.xml
+.idea/workspace.xml
 dist/*
 target/
 lib_managed/
