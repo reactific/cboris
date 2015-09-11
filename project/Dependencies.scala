@@ -31,6 +31,7 @@ trait Dependencies
     val akka = "2.3.13"
     val kamon = "0.4.0"
     val bootswatch = "3.3.1+2"
+    val scala = "2.11.7"
   }
 
   // Akka Stuff
@@ -39,9 +40,10 @@ trait Dependencies
   val akka_http               = "com.typesafe.akka"         %% "akka-http-experimental"   % "1.0"
 
   // Fundamental Libraries
-  val shapeless               = "com.chuusai"               %% "shapeless"                % "2.2.1"
+  val shapeless               = "com.chuusai"               %% "shapeless"                % "2.2.5"
   val scala_arm               = "com.jsuereth"              %% "scala-arm"                % "1.4"
   val scala_compiler          = "org.scala-lang"            % "scala-compiler"            % "2.11.7"
+  val scala_xml               = "org.scala-lang.modules"    % "scala-xml"                 % "1.0.5"
 
   // TODO: Utilize Kamon Monitoring
   val kamon_core              = "io.kamon"                  %% "kamon-core"                % Ver.kamon
@@ -65,11 +67,13 @@ trait Dependencies
   }
 
   val common_dependencies : Seq[ModuleID] = Seq(
-    grizzled_slf4j, akka_slf4j, logback_classic
+    grizzled_slf4j, akka_slf4j, logback_classic, scala_compiler
   )
 
   val root_dependencies : Seq[ModuleID] = Seq(
-   akka_actor, akka_http, kamon_core, kamon_akka, Test.akka_streams_testkit, Test.akka_testkit
+    akka_actor, akka_http, shapeless,
+    kamon_core, kamon_akka,
+    Test.akka_streams_testkit, Test.akka_testkit
   ) ++ common_dependencies
 
 }

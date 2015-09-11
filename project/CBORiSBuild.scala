@@ -16,6 +16,7 @@ object CBORiSBuild extends Build with Dependencies {
   val buildSettings: Seq[Def.Setting[_]] = Seq(
     // credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
     organization := "com.reactific",
+    scalaVersion := Ver.scala,
     maxErrors := 50,
     ScoverageSbtPlugin.ScoverageKeys.coverageFailOnMinimum := true,
     ScoverageSbtPlugin.ScoverageKeys.coverageExcludedPackages := classesIgnoredByScoverage,
