@@ -25,27 +25,94 @@ object Decode {
 
   private def unsupported(s : String) : Unit = { throw new IllegalStateException(s) }
 
-  private def read_uint8(bi: ByteIterator) : Short = {
+  private def unsignedByte(byte : Byte) : Short = {
+    (byte & 0xff).toShort
+  }
+
+  private def read_uint8(bi: ByteIterator) : CBORValue = {
     val byte : Byte = bi.next()
-    (((byte >>> 1).toShort << 1) + (byte & 1)).toShort
+    val result : CBORValue = if (byte >= 0) {
+      byte
+    } else {
+      unsignedByte(byte)
+    }
+    result
   }
 
-  private def read_uint16(bi: ByteIterator) : Int = {
-    val s1 = read_uint8(bi)
-    val s2 = read_uint8(bi)
-    s1 << 8 + s2
+  private def get_uint8(bi: ByteIterator) : Short = {
+    val value = read_uint8(bi)
+    value.select[Byte] match {
+      case Some(x) => x.toShort
+      case None => value.select[Short].get
+    }
   }
 
-  private def read_uint32(bi : ByteIterator) : Long = {
-    val i1 = read_uint16(bi)
-    val i2 = read_uint16(bi)
-    i1 << 16 + i2
+  private def read_uint16(bi: ByteIterator) : CBORValue = {
+    val b1 : Short = unsignedByte(bi.next())
+    val b2 : Short = unsignedByte(bi.next())
+    val result = if (b1 < 128) {
+      (b1 << 8) + b2
+    } else {
+      (b1.toInt << 8) + b2.toInt
+    }
+    result
   }
 
-  private def read_uint64(bi: ByteIterator) : BigInt = {
-    val l1 : BigInt = BigInt(read_uint32(bi))
-    val l2 : BigInt = BigInt(read_uint32(bi))
-    (l1 << 32) + l2
+  private def get_uint16(bi: ByteIterator) : Int = {
+    val value = read_uint16(bi)
+    value.select[Short] match {
+      case Some(x) => x.toInt
+      case None => value.select[Int].get
+    }
+  }
+
+  private def read_uint32(bi : ByteIterator) : CBORValue = {
+    val b1 : Short = unsignedByte(bi.next())
+    val b2 : Short = unsignedByte(bi.next())
+    val b3 : Short = unsignedByte(bi.next())
+    val b4 : Short = unsignedByte(bi.next())
+    val result = if (b1 < 128) {
+      (b1.toInt << 24) + (b2.toInt << 16) + (b3.toInt << 8) + b4.toInt
+    } else {
+      (b1.toLong << 24) + (b2.toLong << 16) + (b3.toLong << 8) + b4.toLong
+    }
+    result
+  }
+
+  private def get_uint32(bi: ByteIterator) : Long = {
+    val value = read_uint32(bi)
+    value.select[Int] match {
+      case Some(x) => x.toLong
+      case None => value.select[Long].get
+    }
+  }
+
+
+  private def read_uint64(bi: ByteIterator) : CBORValue = {
+    val b1 : Short = unsignedByte(bi.next())
+    val b2 : Short = unsignedByte(bi.next())
+    val b3 : Short = unsignedByte(bi.next())
+    val b4 : Short = unsignedByte(bi.next())
+    val b5 : Short = unsignedByte(bi.next())
+    val b6 : Short = unsignedByte(bi.next())
+    val b7 : Short = unsignedByte(bi.next())
+    val b8 : Short = unsignedByte(bi.next())
+    val result : CBORValue = if (b1 < 128 ) {
+      (b1.toLong << 56) + (b2.toLong << 48) + (b3.toLong << 40) + (b4.toLong << 32) +
+        (b5.toLong << 24) + (b6.toLong << 16) + (b7.toLong << 8) + b8.toLong
+    } else {
+      (BigInt(b1) << 56) + (BigInt(b2) << 48) + (BigInt(b3) << 40) + (BigInt(b4) << 32) +
+        (BigInt(b5) << 24) + (BigInt(b6) << 16) + (BigInt(b7) << 8) + BigInt(b8)
+    }
+    result
+  }
+
+  private def get_uint64(bi: ByteIterator) : BigInt = {
+    val value = read_uint64(bi)
+    value.select[Long] match {
+      case Some(x) => BigInt(x)
+      case None => value.select[BigInt].get
+    }
   }
 
   private def read_array(bi: ByteIterator, size : Int) : CBORArray = {
@@ -67,7 +134,7 @@ object Decode {
   def decode(bs: ByteString) : CBORValue = { decode(bs.iterator) }
 
   def decode(bi: ByteIterator) : CBORValue = {
-    val byte = bi.head
+    val byte = bi.next()
     val byteUnsigned = byte & 0xff
     (byteUnsigned: @switch) match {
       case 0x00 => 0
@@ -126,10 +193,10 @@ object Decode {
       case 0x35 => -22
       case 0x36 => -23
       case 0x37 => -24
-      case 0x38 => -1.toShort - read_uint8(bi)
-      case 0x39 => -1 - read_uint16(bi)
-      case 0x3a => -1L - read_uint32(bi)
-      case 0x3b => BigInt(-1) - read_uint64(bi)
+      case 0x38 => -1.toShort - get_uint8(bi)
+      case 0x39 => -1 - get_uint16(bi)
+      case 0x3a => -1L - get_uint32(bi)
+      case 0x3b => BigInt(-1) - get_uint64(bi)
       case 0x3c => unsupported("Byte Code 0x3c Unsupported")
       case 0x3d => unsupported("Byte Code 0x3d Unsupported")
       case 0x3e => unsupported("Byte Code 0x3e Unsupported")
@@ -158,10 +225,10 @@ object Decode {
       case 0x55 => bi.take(21).toByteString
       case 0x56 => bi.take(22).toByteString
       case 0x57 => bi.take(23).toByteString
-      case 0x58 => bi.take(read_uint8(bi)).toByteString
-      case 0x59 => bi.take(read_uint16(bi)).toByteString
-      case 0x5a => bi.take(read_uint32(bi).toInt).toByteString
-      case 0x5b => bi.take(read_uint64(bi).toInt).toByteString
+      case 0x58 => bi.take(get_uint8(bi)).toByteString
+      case 0x59 => bi.take(get_uint16(bi)).toByteString
+      case 0x5a => bi.take(get_uint32(bi).toInt).toByteString
+      case 0x5b => bi.take(get_uint64(bi).toInt).toByteString
       case 0x5c => unsupported("Byte Code 0x5c Unsupported")
       case 0x5d => unsupported("Byte Code 0x5d Unsupported")
       case 0x5e => unsupported("Byte Code 0x5e Unsupported")
@@ -190,10 +257,10 @@ object Decode {
       case 0x75 => new String(bi.take(21).toArray, StandardCharsets.UTF_8)
       case 0x76 => new String(bi.take(22).toArray, StandardCharsets.UTF_8)
       case 0x77 => new String(bi.take(23).toArray, StandardCharsets.UTF_8)
-      case 0x78 => new String(bi.take(read_uint8(bi).toInt).toArray, StandardCharsets.UTF_8)
-      case 0x79 => new String(bi.take(read_uint16(bi)).toArray, StandardCharsets.UTF_8)
-      case 0x7a => new String(bi.take(read_uint32(bi).toInt).toArray, StandardCharsets.UTF_8)
-      case 0x7b => new String(bi.take(read_uint64(bi).toInt).toArray, StandardCharsets.UTF_8)
+      case 0x78 => new String(bi.take(get_uint8(bi).toInt).toArray, StandardCharsets.UTF_8)
+      case 0x79 => new String(bi.take(get_uint16(bi)).toArray, StandardCharsets.UTF_8)
+      case 0x7a => new String(bi.take(get_uint32(bi).toInt).toArray, StandardCharsets.UTF_8)
+      case 0x7b => new String(bi.take(get_uint64(bi).toInt).toArray, StandardCharsets.UTF_8)
       case 0x7c => unsupported("Byte Code 0x7c Unsupported")
       case 0x7d => unsupported("Byte Code 0x7d Unsupported")
       case 0x7e => unsupported("Byte Code 0x7e Unsupported")
@@ -222,10 +289,10 @@ object Decode {
       case 0x95 => read_array(bi, 21)
       case 0x96 => read_array(bi, 22)
       case 0x97 => read_array(bi, 23)
-      case 0x98 => read_array(bi, read_uint8(bi))
-      case 0x99 => read_array(bi, read_uint16(bi))
-      case 0x9a => read_array(bi, read_uint32(bi).toInt)
-      case 0x9b => read_array(bi, read_uint64(bi).toInt)
+      case 0x98 => read_array(bi, get_uint8(bi).toInt)
+      case 0x99 => read_array(bi, get_uint16(bi))
+      case 0x9a => read_array(bi, get_uint32(bi).toInt)
+      case 0x9b => read_array(bi, get_uint64(bi).toInt)
       case 0x9c => unsupported("Byte Code 0x9c Unsupported")
       case 0x9d => unsupported("Byte Code 0x9d Unsupported")
       case 0x9e => unsupported("Byte Code 0x9e Unsupported")
