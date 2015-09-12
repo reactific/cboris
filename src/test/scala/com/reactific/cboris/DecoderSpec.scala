@@ -1,18 +1,15 @@
-package com.reactific.cboris.codec
+package com.reactific.cboris
 
 import akka.actor.ActorSystem
-import akka.pattern.pipe
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Sink, Source}
-import akka.stream.testkit.scaladsl._
+import akka.stream.scaladsl.Sink
 import akka.testkit.TestProbe
+import akka.util.{ByteString, ByteStringBuilder}
 import com.reactific.cboris.Model._
-import com.reactific.cboris.Decode
 import org.specs2.mutable.Specification
 
-import akka.util.{ByteStringBuilder, ByteString}
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.util.Random
 
 object utils {
@@ -60,7 +57,6 @@ class DecoderSpec extends Specification {
   sequential
 
   import utils._
-  import system.dispatcher
 
   "randomByteString" should {
     "not return the same results" in {

@@ -9,7 +9,8 @@ import com.reactific.sbt.ProjectPlugin.autoImport._
 
 object CBORiSBuild extends Build with Dependencies {
   val classesIgnoredByScoverage : String = Seq[String](
-    "<empty>" // Avoids warnings from scoverage
+    "<empty>", // Avoids warnings from scoverage
+    "com.reactific.cboris.ComReactificCborisInfo"
   ).mkString(";")
 
   val base_name = "cboris"

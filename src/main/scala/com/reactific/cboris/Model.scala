@@ -1,15 +1,14 @@
 package com.reactific.cboris
 
-import java.time.Instant
-
-import shapeless._
-import shapeless.ops.coproduct.Mapper._
-import shapeless.ops.coproduct.Unifier
-import shapeless.poly._
 import akka.util.ByteString
 
+import java.time.Instant
+import java.time.Duration
+
+import shapeless._
+import shapeless.ops.coproduct.Unifier
+
 import scala.collection.immutable.HashMap
-import scala.concurrent.duration.Duration
 import scala.language.implicitConversions
 
 object Model {
@@ -24,10 +23,13 @@ object Model {
 
   final case class CBORMap(
     value: HashMap[CBORValue, CBORValue] = HashMap.empty[CBORValue, CBORValue]
-    ) extends CBORVal
+  ) extends CBORVal {
+    def this( pairs: (Any,Any)* ) = this(HashMap( pairs.map {
+      case (x,y) => atomFromAny(x) -> atomFromAny(y) }:_*))
+  }
 
-  /** CBORAtom Type
-    * This Shapeless type is a union of the basic CBOR types and is used as the value type for CBORValue case classes.
+  /** CBOR Value Type
+    * This Shapeless type is a union of the allowed CBOR types and is used as the Scala model for CBOR data values.
     */
   type CBORValue = Boolean :+: Byte :+: Short :+: Int :+: Long :+: Float :+: Double :+:
     BigInt :+: BigDecimal :+: ByteString :+: String :+: Instant :+: Duration :+:
@@ -69,6 +71,29 @@ object Model {
 
   implicit def atomFromMap(map: CBORMap): CBORValue = Coproduct[CBORValue](map)
 
+  implicit def atomFromAny(value : Any) : CBORValue = {
+    value match {
+      case b0: Boolean => atomFromBoolean(b0)
+      case by: Byte => atomFromByte(by)
+      case sh: Short => atomFromShort(sh)
+      case i: Int => atomFromInt(i)
+      case l: Long => atomFromLong(l)
+      case f: Float => atomFromFloat(f)
+      case d: Double => atomFromDouble(d)
+      case inst : Instant => atomFromInstant(inst)
+      case dur: Duration => atomFromDuration(dur)
+      case bi: BigInt => atomFromBigInt(bi)
+      case bd: BigDecimal => atomFromBigDecimal(bd)
+      case nul: CBORNull.type => atomFromNull(CBORNull)
+      case undef: CBORUndefined.type => atomFromUndefined(CBORUndefined)
+      case str: String => atomFromString(str)
+      case bs: ByteString => atomFromByteString(bs)
+      case arr: CBORArray => atomFromArray(arr)
+      case map: CBORMap => atomFromMap(map)
+    }
+  }
+
+  /*
   object extractToAny extends Poly1 {
     implicit def caseBoolean : Any = at[Boolean] { b: Boolean ⇒ b }
     implicit def caseByte : Any = at[Byte] { b: Byte ⇒ b }
@@ -88,15 +113,14 @@ object Model {
     implicit def caseArray : Any = at[CBORArray] { a : CBORArray ⇒ a }
     implicit def caseMap : Any = at[CBORMap] { a : CBORMap ⇒ a }
   }
+  */
 
   def project[T](value: CBORValue)(implicit unify: Unifier.Aux[CBORValue, T]): T = {
     unify(value)
   }
+
   implicit def asAny( value : CBORValue) : Any = {
     project[Any](value)
-    // value.select[Float]
-    // val mapping = value.map(extractToAny)
-    // mapping.unify
   }
 
 
