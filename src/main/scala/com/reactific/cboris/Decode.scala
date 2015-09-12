@@ -165,10 +165,10 @@ object Decode {
       case 0x19 => read_uint16(bi)
       case 0x1a => read_uint32(bi)
       case 0x1b => read_uint64(bi)
-      case 0x1c => unsupported("Byte Code 0x1c Unsupported")
-      case 0x1d => unsupported("Byte Code 0x1d Unsupported")
-      case 0x1e => unsupported("Byte Code 0x1e Unsupported")
-      case 0x1f => unsupported("Byte Code 0x1f Unsupported")
+      case 0x1c => unsupported("Unsupported: Code 0x1c")
+      case 0x1d => unsupported("Unsupported: Code 0x1d")
+      case 0x1e => unsupported("Unsupported: Code 0x1e")
+      case 0x1f => unsupported("Unsupported: Code 0x1f")
       case 0x20 => -1
       case 0x21 => -2
       case 0x22 => -3
@@ -197,10 +197,10 @@ object Decode {
       case 0x39 => -1 - get_uint16(bi)
       case 0x3a => -1L - get_uint32(bi)
       case 0x3b => BigInt(-1) - get_uint64(bi)
-      case 0x3c => unsupported("Byte Code 0x3c Unsupported")
-      case 0x3d => unsupported("Byte Code 0x3d Unsupported")
-      case 0x3e => unsupported("Byte Code 0x3e Unsupported")
-      case 0x3f => unsupported("Byte Code 0x3f Unsupported")
+      case 0x3c => unsupported("Unsupported: Code 0x3c")
+      case 0x3d => unsupported("Unsupported: Code 0x3d")
+      case 0x3e => unsupported("Unsupported: Code 0x3e")
+      case 0x3f => unsupported("Unsupported: Code 0x3f")
       case 0x40 => bi.take(0).toByteString
       case 0x41 => bi.take(1).toByteString
       case 0x42 => bi.take(2).toByteString
@@ -229,9 +229,9 @@ object Decode {
       case 0x59 => bi.take(get_uint16(bi)).toByteString
       case 0x5a => bi.take(get_uint32(bi).toInt).toByteString
       case 0x5b => bi.take(get_uint64(bi).toInt).toByteString
-      case 0x5c => unsupported("Byte Code 0x5c Unsupported")
-      case 0x5d => unsupported("Byte Code 0x5d Unsupported")
-      case 0x5e => unsupported("Byte Code 0x5e Unsupported")
+      case 0x5c => unsupported("Unsupported: Code 0x5c")
+      case 0x5d => unsupported("Unsupported: Code 0x5d")
+      case 0x5e => unsupported("Unsupported: Code 0x5e")
       case 0x5f => bi.takeWhile { byte => byte != 0xff }.toByteString
       case 0x60 => new String()
       case 0x61 => new String(bi.take(1).toArray, StandardCharsets.UTF_8)
@@ -261,9 +261,9 @@ object Decode {
       case 0x79 => new String(bi.take(get_uint16(bi)).toArray, StandardCharsets.UTF_8)
       case 0x7a => new String(bi.take(get_uint32(bi).toInt).toArray, StandardCharsets.UTF_8)
       case 0x7b => new String(bi.take(get_uint64(bi).toInt).toArray, StandardCharsets.UTF_8)
-      case 0x7c => unsupported("Byte Code 0x7c Unsupported")
-      case 0x7d => unsupported("Byte Code 0x7d Unsupported")
-      case 0x7e => unsupported("Byte Code 0x7e Unsupported")
+      case 0x7c => unsupported("Unsupported: Code 0x7c")
+      case 0x7d => unsupported("Unsupported: Code 0x7d")
+      case 0x7e => unsupported("Unsupported: Code 0x7e")
       case 0x7f => new String(bi.takeWhile { byte => byte != 0xff }.toArray, StandardCharsets.UTF_8)
       case 0x80 => read_array(bi, 0)
       case 0x81 => read_array(bi, 1)
@@ -293,15 +293,25 @@ object Decode {
       case 0x99 => read_array(bi, get_uint16(bi))
       case 0x9a => read_array(bi, get_uint32(bi).toInt)
       case 0x9b => read_array(bi, get_uint64(bi).toInt)
-      case 0x9c => unsupported("Byte Code 0x9c Unsupported")
-      case 0x9d => unsupported("Byte Code 0x9d Unsupported")
-      case 0x9e => unsupported("Byte Code 0x9e Unsupported")
+      case 0x9c => unsupported("Unsupported: Code 0x9c")
+      case 0x9d => unsupported("Unsupported: Code 0x9d")
+      case 0x9e => unsupported("Unsupported: Code 0x9e")
       case 0x9f => read_indefinite_array(bi)
+      case 0xbc => unsupported("Unsupported: Code 0xbc")
+      case 0xbd => unsupported("Unsupported: Code 0xbd")
+      case 0xbe => unsupported("Unsupported: Code 0xbe")
+      case 0xdc => unsupported("Unsupported: Code 0xdc")
+      case 0xdd => unsupported("Unsupported: Code 0xdd")
+      case 0xde => unsupported("Unsupported: Code 0xde")
+      case 0xfc => unsupported("Unsupported: Code 0xfc")
+      case 0xfd => unsupported("Unsupported: Code 0xfd")
+      case 0xfe => unsupported("Unsupported: Code 0xfe")
+
       case 0xf4 => false
       case 0xf5 => true
       case 0xf6 => CBORNull
       case 0xf7 => CBORUndefined
-      case _ => unsupported( f"Unsupported initial byte: $byte%d (0x$byteUnsigned%2x)")
+      case _ => unsupported( f"Unsupported: Code 0x$byteUnsigned%2x")
     }
   }
 }
