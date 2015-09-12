@@ -122,6 +122,12 @@ object Decode {
     CBORArray(result.result())
   }
 
+  private def read_bytes(bi: ByteIterator, count: Int) : ByteIterator = {
+    val clone = bi.clone()
+    bi.drop(count)
+    clone.take(count)
+  }
+
   private def read_indefinite_array(bi : ByteIterator) : CBORArray = {
     val result = Vector.newBuilder[CBORValue]
     result.sizeHint(32)
@@ -131,9 +137,8 @@ object Decode {
     CBORArray(result.result())
   }
 
-  def decode(bs: ByteString) : CBORValue = { decode(bs.iterator) }
 
-  def decode(bi: ByteIterator) : CBORValue = {
+  def decode_positive_integer(bi : ByteIterator) : CBORValue = {
     val byte = bi.next()
     val byteUnsigned = byte & 0xff
     (byteUnsigned: @switch) match {
@@ -169,6 +174,14 @@ object Decode {
       case 0x1d => unsupported("Unsupported: Code 0x1d")
       case 0x1e => unsupported("Unsupported: Code 0x1e")
       case 0x1f => unsupported("Unsupported: Code 0x1f")
+      case _ => unsupported(f"Invalid initial byte $byteUnsigned%x for positive integer")
+    }
+  }
+
+  def decode_negative_integer(bi : ByteIterator) : CBORValue = {
+    val byte = bi.next()
+    val byteUnsigned = byte & 0xff
+    (byteUnsigned: @switch) match {
       case 0x20 => -1
       case 0x21 => -2
       case 0x22 => -3
@@ -201,70 +214,120 @@ object Decode {
       case 0x3d => unsupported("Unsupported: Code 0x3d")
       case 0x3e => unsupported("Unsupported: Code 0x3e")
       case 0x3f => unsupported("Unsupported: Code 0x3f")
-      case 0x40 => bi.take(0).toByteString
-      case 0x41 => bi.take(1).toByteString
-      case 0x42 => bi.take(2).toByteString
-      case 0x43 => bi.take(3).toByteString
-      case 0x44 => bi.take(4).toByteString
-      case 0x45 => bi.take(5).toByteString
-      case 0x46 => bi.take(6).toByteString
-      case 0x47 => bi.take(7).toByteString
-      case 0x48 => bi.take(8).toByteString
-      case 0x49 => bi.take(9).toByteString
-      case 0x4a => bi.take(10).toByteString
-      case 0x4b => bi.take(11).toByteString
-      case 0x4c => bi.take(12).toByteString
-      case 0x4d => bi.take(13).toByteString
-      case 0x4e => bi.take(14).toByteString
-      case 0x4f => bi.take(15).toByteString
-      case 0x50 => bi.take(16).toByteString
-      case 0x51 => bi.take(17).toByteString
-      case 0x52 => bi.take(18).toByteString
-      case 0x53 => bi.take(19).toByteString
-      case 0x54 => bi.take(20).toByteString
-      case 0x55 => bi.take(21).toByteString
-      case 0x56 => bi.take(22).toByteString
-      case 0x57 => bi.take(23).toByteString
-      case 0x58 => bi.take(get_uint8(bi)).toByteString
-      case 0x59 => bi.take(get_uint16(bi)).toByteString
-      case 0x5a => bi.take(get_uint32(bi).toInt).toByteString
-      case 0x5b => bi.take(get_uint64(bi).toInt).toByteString
-      case 0x5c => unsupported("Unsupported: Code 0x5c")
-      case 0x5d => unsupported("Unsupported: Code 0x5d")
-      case 0x5e => unsupported("Unsupported: Code 0x5e")
-      case 0x5f => bi.takeWhile { byte => byte != 0xff }.toByteString
-      case 0x60 => new String()
-      case 0x61 => new String(bi.take(1).toArray, StandardCharsets.UTF_8)
-      case 0x62 => new String(bi.take(2).toArray, StandardCharsets.UTF_8)
-      case 0x63 => new String(bi.take(3).toArray, StandardCharsets.UTF_8)
-      case 0x64 => new String(bi.take(4).toArray, StandardCharsets.UTF_8)
-      case 0x65 => new String(bi.take(5).toArray, StandardCharsets.UTF_8)
-      case 0x66 => new String(bi.take(6).toArray, StandardCharsets.UTF_8)
-      case 0x67 => new String(bi.take(7).toArray, StandardCharsets.UTF_8)
-      case 0x68 => new String(bi.take(8).toArray, StandardCharsets.UTF_8)
-      case 0x69 => new String(bi.take(9).toArray, StandardCharsets.UTF_8)
-      case 0x6a => new String(bi.take(10).toArray, StandardCharsets.UTF_8)
-      case 0x6b => new String(bi.take(11).toArray, StandardCharsets.UTF_8)
-      case 0x6c => new String(bi.take(12).toArray, StandardCharsets.UTF_8)
-      case 0x6d => new String(bi.take(13).toArray, StandardCharsets.UTF_8)
-      case 0x6e => new String(bi.take(14).toArray, StandardCharsets.UTF_8)
-      case 0x6f => new String(bi.take(15).toArray, StandardCharsets.UTF_8)
-      case 0x70 => new String(bi.take(16).toArray, StandardCharsets.UTF_8)
-      case 0x71 => new String(bi.take(17).toArray, StandardCharsets.UTF_8)
-      case 0x72 => new String(bi.take(18).toArray, StandardCharsets.UTF_8)
-      case 0x73 => new String(bi.take(19).toArray, StandardCharsets.UTF_8)
-      case 0x74 => new String(bi.take(20).toArray, StandardCharsets.UTF_8)
-      case 0x75 => new String(bi.take(21).toArray, StandardCharsets.UTF_8)
-      case 0x76 => new String(bi.take(22).toArray, StandardCharsets.UTF_8)
-      case 0x77 => new String(bi.take(23).toArray, StandardCharsets.UTF_8)
-      case 0x78 => new String(bi.take(get_uint8(bi).toInt).toArray, StandardCharsets.UTF_8)
-      case 0x79 => new String(bi.take(get_uint16(bi)).toArray, StandardCharsets.UTF_8)
-      case 0x7a => new String(bi.take(get_uint32(bi).toInt).toArray, StandardCharsets.UTF_8)
-      case 0x7b => new String(bi.take(get_uint64(bi).toInt).toArray, StandardCharsets.UTF_8)
-      case 0x7c => unsupported("Unsupported: Code 0x7c")
-      case 0x7d => unsupported("Unsupported: Code 0x7d")
-      case 0x7e => unsupported("Unsupported: Code 0x7e")
-      case 0x7f => new String(bi.takeWhile { byte => byte != 0xff }.toArray, StandardCharsets.UTF_8)
+    }
+  }
+
+  def decode_bytestring(bi : ByteIterator) : CBORValue = {
+    val byte = bi.next() & 0xff
+    if (byte == 0x5f)
+      decode_indefinite_bytestring(bi)
+    else
+      decode_definite_bytestring(byte, bi)
+  }
+
+  private def decode_definite_bytestring(byte: Int, bi : ByteIterator): ByteString = {
+    (byte: @switch) match {
+      case 0x40 => read_bytes(bi,0).toByteString
+      case 0x41 => read_bytes(bi,1).toByteString
+      case 0x42 => read_bytes(bi,2).toByteString
+      case 0x43 => read_bytes(bi,3).toByteString
+      case 0x44 => read_bytes(bi,4).toByteString
+      case 0x45 => read_bytes(bi,5).toByteString
+      case 0x46 => read_bytes(bi,6).toByteString
+      case 0x47 => read_bytes(bi,7).toByteString
+      case 0x48 => read_bytes(bi,8).toByteString
+      case 0x49 => read_bytes(bi,9).toByteString
+      case 0x4a => read_bytes(bi,10).toByteString
+      case 0x4b => read_bytes(bi,11).toByteString
+      case 0x4c => read_bytes(bi,12).toByteString
+      case 0x4d => read_bytes(bi,13).toByteString
+      case 0x4e => read_bytes(bi,14).toByteString
+      case 0x4f => read_bytes(bi,15).toByteString
+      case 0x50 => read_bytes(bi,16).toByteString
+      case 0x51 => read_bytes(bi,17).toByteString
+      case 0x52 => read_bytes(bi,18).toByteString
+      case 0x53 => read_bytes(bi,19).toByteString
+      case 0x54 => read_bytes(bi,20).toByteString
+      case 0x55 => read_bytes(bi,21).toByteString
+      case 0x56 => read_bytes(bi,22).toByteString
+      case 0x57 => read_bytes(bi,23).toByteString
+      case 0x58 => read_bytes(bi, get_uint8(bi)).toByteString
+      case 0x59 => read_bytes(bi, get_uint16(bi)).toByteString
+      case 0x5a => read_bytes(bi, get_uint32(bi).toInt).toByteString
+      case 0x5b => read_bytes(bi, get_uint64(bi).toInt).toByteString
+      case 0x5c => unsupported("Unsupported: Code 0x5c") ; ByteString()
+      case 0x5d => unsupported("Unsupported: Code 0x5d") ; ByteString()
+      case 0x5e => unsupported("Unsupported: Code 0x5e") ; ByteString()
+      case _ => unsupported(f"Unsupported: Code $byte%x is not a definite byte string") ; ByteString()
+    }
+  }
+
+  def decode_indefinite_bytestring(bi : ByteIterator) : ByteString = {
+    val result = ByteString.newBuilder
+    while (bi.hasNext && (bi.head != 0xff.toByte)) {
+      val bs = decode_definite_bytestring(bi.next(), bi)
+      result.append(bs)
+    }
+    result.result()
+  }
+
+  def decode_textstring(bi : ByteIterator) : CBORValue = {
+    val byte = bi.next() & 0xff
+    if (byte == 0x7f)
+      decode_indefinite_textstring(bi)
+    else
+      decode_definite_textstring(byte, bi)
+  }
+
+  def decode_definite_textstring(byte: Int, bi : ByteIterator) : String = {
+    (byte: @switch) match {
+      case 0x60 => new String
+      case 0x61 => new String(read_bytes(bi,1).toArray, StandardCharsets.UTF_8)
+      case 0x62 => new String(read_bytes(bi,2).toArray, StandardCharsets.UTF_8)
+      case 0x63 => new String(read_bytes(bi,3).toArray, StandardCharsets.UTF_8)
+      case 0x64 => new String(read_bytes(bi,4).toArray, StandardCharsets.UTF_8)
+      case 0x65 => new String(read_bytes(bi,5).toArray, StandardCharsets.UTF_8)
+      case 0x66 => new String(read_bytes(bi,6).toArray, StandardCharsets.UTF_8)
+      case 0x67 => new String(read_bytes(bi,7).toArray, StandardCharsets.UTF_8)
+      case 0x68 => new String(read_bytes(bi,8).toArray, StandardCharsets.UTF_8)
+      case 0x69 => new String(read_bytes(bi,9).toArray, StandardCharsets.UTF_8)
+      case 0x6a => new String(read_bytes(bi,10).toArray, StandardCharsets.UTF_8)
+      case 0x6b => new String(read_bytes(bi,11).toArray, StandardCharsets.UTF_8)
+      case 0x6c => new String(read_bytes(bi,12).toArray, StandardCharsets.UTF_8)
+      case 0x6d => new String(read_bytes(bi,13).toArray, StandardCharsets.UTF_8)
+      case 0x6e => new String(read_bytes(bi,14).toArray, StandardCharsets.UTF_8)
+      case 0x6f => new String(read_bytes(bi,15).toArray, StandardCharsets.UTF_8)
+      case 0x70 => new String(read_bytes(bi,16).toArray, StandardCharsets.UTF_8)
+      case 0x71 => new String(read_bytes(bi,17).toArray, StandardCharsets.UTF_8)
+      case 0x72 => new String(read_bytes(bi,18).toArray, StandardCharsets.UTF_8)
+      case 0x73 => new String(read_bytes(bi,19).toArray, StandardCharsets.UTF_8)
+      case 0x74 => new String(read_bytes(bi,20).toArray, StandardCharsets.UTF_8)
+      case 0x75 => new String(read_bytes(bi,21).toArray, StandardCharsets.UTF_8)
+      case 0x76 => new String(read_bytes(bi,22).toArray, StandardCharsets.UTF_8)
+      case 0x77 => new String(read_bytes(bi,23).toArray, StandardCharsets.UTF_8)
+      case 0x78 => new String(read_bytes(bi,get_uint8(bi).toInt).toArray, StandardCharsets.UTF_8)
+      case 0x79 => new String(read_bytes(bi,get_uint16(bi)).toArray, StandardCharsets.UTF_8)
+      case 0x7a => new String(read_bytes(bi,get_uint32(bi).toInt).toArray, StandardCharsets.UTF_8)
+      case 0x7b => new String(read_bytes(bi,get_uint64(bi).toInt).toArray, StandardCharsets.UTF_8)
+      case 0x7c => unsupported("Unsupported: Code 0x7c") ; new String
+      case 0x7d => unsupported("Unsupported: Code 0x7d") ; new String
+      case 0x7e => unsupported("Unsupported: Code 0x7e") ; new String
+      case _ => unsupported(f"Unsupported: Code $byte%x is not a definite text string"); new String
+    }
+  }
+
+  private def decode_indefinite_textstring(bi : ByteIterator) : String = {
+    val result = new StringBuilder
+    while (bi.hasNext & (bi.head != 0xff.toByte)) {
+      val bs = decode_definite_textstring(bi.next(), bi)
+      result.append(bs)
+    }
+    result.result()
+  }
+
+  def decode_array(bi : ByteIterator) : CBORValue = {
+    val byte = bi.next() & 0xff
+    (byte: @switch) match {
       case 0x80 => read_array(bi, 0)
       case 0x81 => read_array(bi, 1)
       case 0x82 => read_array(bi, 2)
@@ -297,21 +360,63 @@ object Decode {
       case 0x9d => unsupported("Unsupported: Code 0x9d")
       case 0x9e => unsupported("Unsupported: Code 0x9e")
       case 0x9f => read_indefinite_array(bi)
+      case _ => unsupported(f"Unsupported: Code $byte%x is not an array"); new String
+    }
+  }
+
+  def decode_map(bi : ByteIterator) : CBORValue = {
+    val byte = bi.next() & 0xff
+    (byte: @switch) match {
       case 0xbc => unsupported("Unsupported: Code 0xbc")
       case 0xbd => unsupported("Unsupported: Code 0xbd")
       case 0xbe => unsupported("Unsupported: Code 0xbe")
+      case _ => unsupported(f"Unsupported: Code $byte%x is not a map"); new String
+    }
+  }
+
+  def decode_tagged_type(bi : ByteIterator) : CBORValue = {
+    val byte = bi.next() & 0xff
+    (byte: @switch) match {
       case 0xdc => unsupported("Unsupported: Code 0xdc")
       case 0xdd => unsupported("Unsupported: Code 0xdd")
       case 0xde => unsupported("Unsupported: Code 0xde")
-      case 0xfc => unsupported("Unsupported: Code 0xfc")
-      case 0xfd => unsupported("Unsupported: Code 0xfd")
-      case 0xfe => unsupported("Unsupported: Code 0xfe")
+      case _ => unsupported(f"Unsupported: Code $byte%x is not a tagged type"); new String
+    }
+  }
 
+  def decode_fp_and_simple(bi : ByteIterator) : CBORValue = {
+    val byte = bi.next() & 0xff
+    (byte: @switch) match {
       case 0xf4 => false
       case 0xf5 => true
       case 0xf6 => CBORNull
       case 0xf7 => CBORUndefined
-      case _ => unsupported( f"Unsupported: Code 0x$byteUnsigned%2x")
+      case 0xfc => unsupported("Unsupported: Code 0xfc")
+      case 0xfd => unsupported("Unsupported: Code 0xfd")
+      case 0xfe => unsupported("Unsupported: Code 0xfe")
+      case _ => unsupported( f"Unsupported: Code 0x$byte%2x")
     }
   }
+
+  def decode(bi: ByteIterator) : CBORValue = {
+    if (bi.hasNext) {
+      ((bi.head & 0xff) >> 5: @switch) match {
+        case 0 => decode_positive_integer(bi)
+        case 1 => decode_negative_integer(bi)
+        case 2 => decode_bytestring(bi)
+        case 3 => decode_textstring(bi)
+        case 4 => decode_array(bi)
+        case 5 => decode_map(bi)
+        case 6 => decode_tagged_type(bi)
+        case 7 => decode_fp_and_simple(bi)
+      }
+    } else {
+      CBORNull
+    }
+  }
+
+  def decode(bs: ByteString) : CBORValue = {
+    decode(bs.iterator)
+  }
+
 }

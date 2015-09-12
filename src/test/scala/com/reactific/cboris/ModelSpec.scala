@@ -11,13 +11,26 @@ import scala.collection.immutable.HashMap
 
 
 object data {
-  val bi = BigInt(0x11)
-  val bd = BigDecimal(17.0)
+  val bigint = BigInt(0x11)
+  val bigdec = BigDecimal(17.0)
   def unitFunc : Unit = {}
+  val t1 = Instant.now()
+  val t2 = Instant.ofEpochSecond(17)
+  val dur = Duration.between(t2, t1)
+  val bs_value : ByteString = ByteString("foo")
+  val array = CBORArray(Vector(17, 17.0D, "17", Instant.now()))
+  val aMap = new CBORMap(
+    "a" -> 17, 23 -> 42.0D, 17.0 -> t1, 42L -> t2,
+    bigint -> dur, bigdec -> bs_value, "b" -> array,
+    "c" -> CBORMap()
+  )
+
 }
 
 /** Test Cases For Model object */
 class ModelSpec extends Specification {
+
+  import data._
 
   "Model" should {
     "Construct CBORValue from all the numeric types " in {
@@ -29,20 +42,20 @@ class ModelSpec extends Specification {
       i.select[Int] must beEqualTo(Some(0x11.toInt))
       val l : CBORValue = 0x11.toLong
       l.select[Long] must beEqualTo(Some(0x11.toLong))
-      val bi : CBORValue = data.bi
-      bi.select[BigInt] must beEqualTo(Some(data.bi))
+      val bi : CBORValue = bigint
+      bi.select[BigInt] must beEqualTo(Some(bigint))
       val f : CBORValue = 17.toFloat
       f.select[Float] must beEqualTo(Some(17.0))
       val d : CBORValue = 17D
       d.select[Double] must beEqualTo(Some(17.0D))
-      val bd : CBORValue = data.bd
-      bd.select[BigDecimal] must beEqualTo(Some(data.bd))
+      val bd : CBORValue = bigdec
+      bd.select[BigDecimal] must beEqualTo(Some(bigdec))
     }
 
     "Construct CBORvalue from constant values" in {
       val nul1 : CBORValue = CBORNull
       nul1.select[CBORNull.type] must beEqualTo(Some(CBORNull))
-      val nul2 : CBORValue = data.unitFunc
+      val nul2 : CBORValue = unitFunc
       nul2.select[CBORNull.type] must beEqualTo(Some(CBORNull))
       val undef : CBORValue = CBORUndefined
       undef.select[CBORUndefined.type] must beEqualTo(Some(CBORUndefined))
@@ -53,9 +66,6 @@ class ModelSpec extends Specification {
     }
 
     "Construct CBORValue from time values" in {
-      val t1 = Instant.now()
-      val t2 = Instant.ofEpochSecond(17)
-      val dur = Duration.between(t2, t1)
       val i1 : CBORValue = t1
       i1.select[Instant] must beEqualTo(Some(t1))
       val i2 : CBORValue = t2
@@ -67,19 +77,16 @@ class ModelSpec extends Specification {
     "Construct CBORValue from strings" in {
       val s : CBORValue = "foo"
       s.select[String] must beEqualTo(Some("foo"))
-      val bs_value : ByteString = ByteString("foo")
       val bs : CBORValue = bs_value
       bs.select[ByteString] must beEqualTo(Some(bs_value))
     }
 
     "Construct CBORValue from arrays" in {
-      val array = CBORArray(Vector(17, 17.0D, "17", Instant.now()))
       val a : CBORValue = array
       a.select[CBORArray] must beEqualTo(Some(array))
     }
 
     "Construct CBORValue from maps" in {
-      val aMap = new CBORMap( "a" -> 17, 23 -> "b", 17.0 -> Instant.now())
       val map : CBORValue = aMap
       map.select[CBORMap] must beEqualTo(Some(aMap))
 

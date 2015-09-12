@@ -1,5 +1,7 @@
 package com.reactific.cboris
 
+import java.nio.charset.StandardCharsets
+
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
@@ -13,6 +15,14 @@ import scala.concurrent.{Await, Future}
 import scala.util.Random
 
 object utils {
+  def randomString(len : Int) : String = {
+    val array = new Array[Char](len)
+    for (x <- 1 to len) {
+      array.update(x-1, Random.nextPrintableChar())
+    }
+    new String(array)
+  }
+
   def randomByteString(len : Int, assureInvalid: Boolean = true) : ByteString = {
     //create bytestring containing random bytes
     val randomBytes = new Array[Byte](len - (if (assureInvalid) 3 else 0))
@@ -47,6 +57,13 @@ object utils {
     implicit val execution_context = system.dispatcher
     val bldr = new ByteStringBuilder
     for (byte <- bytes) { bldr.putByte(byte.toByte) }
+    decodebs(bldr.result())
+  }
+
+  def decode(bs: ByteString, bytes: Int*) : Any = {
+    val bldr = new ByteStringBuilder
+    for (b <- bytes) { bldr.putByte(b.toByte) }
+    bldr.append(bs)
     decodebs(bldr.result())
   }
 
@@ -103,56 +120,16 @@ class DecoderSpec extends Specification {
       Await.result(future, 1.second) must throwAn[IllegalStateException]("Unsupported")
     }
     "accept integers 0 to 23" in {
-      decode(0x00) must beEqualTo(0)
-      decode(0x01) must beEqualTo(1)
-      decode(0x02) must beEqualTo(2)
-      decode(0x03) must beEqualTo(3)
-      decode(0x04) must beEqualTo(4)
-      decode(0x05) must beEqualTo(5)
-      decode(0x06) must beEqualTo(6)
-      decode(0x07) must beEqualTo(7)
-      decode(0x08) must beEqualTo(8)
-      decode(0x09) must beEqualTo(9)
-      decode(0x0a) must beEqualTo(10)
-      decode(0x0b) must beEqualTo(11)
-      decode(0x0c) must beEqualTo(12)
-      decode(0x0d) must beEqualTo(13)
-      decode(0x0e) must beEqualTo(14)
-      decode(0x0f) must beEqualTo(15)
-      decode(0x10) must beEqualTo(16)
-      decode(0x11) must beEqualTo(17)
-      decode(0x12) must beEqualTo(18)
-      decode(0x13) must beEqualTo(19)
-      decode(0x14) must beEqualTo(20)
-      decode(0x15) must beEqualTo(21)
-      decode(0x16) must beEqualTo(22)
-      decode(0x17) must beEqualTo(23)
+      for (x <- 0x00 to 0x17) {
+        decode(x) must beEqualTo(x)
+      }
+      success
     }
     "accept negative integers -1 to -24" in {
-      decode(0x20) must beEqualTo(-1)
-      decode(0x21) must beEqualTo(-2)
-      decode(0x22) must beEqualTo(-3)
-      decode(0x23) must beEqualTo(-4)
-      decode(0x24) must beEqualTo(-5)
-      decode(0x25) must beEqualTo(-6)
-      decode(0x26) must beEqualTo(-7)
-      decode(0x27) must beEqualTo(-8)
-      decode(0x28) must beEqualTo(-9)
-      decode(0x29) must beEqualTo(-10)
-      decode(0x2a) must beEqualTo(-11)
-      decode(0x2b) must beEqualTo(-12)
-      decode(0x2c) must beEqualTo(-13)
-      decode(0x2d) must beEqualTo(-14)
-      decode(0x2e) must beEqualTo(-15)
-      decode(0x2f) must beEqualTo(-16)
-      decode(0x30) must beEqualTo(-17)
-      decode(0x31) must beEqualTo(-18)
-      decode(0x32) must beEqualTo(-19)
-      decode(0x33) must beEqualTo(-20)
-      decode(0x34) must beEqualTo(-21)
-      decode(0x35) must beEqualTo(-22)
-      decode(0x36) must beEqualTo(-23)
-      decode(0x37) must beEqualTo(-24)
+      for (x <- 0x20 to 0x37) {
+        decode(x) must beEqualTo( -(x - 0x1f))
+      }
+      success
     }
     "accept small unsigned integers of 1, 2, 4, and 8 bytes" in {
       decode(0x18,0x11) must beEqualTo(0x11.toByte)
@@ -177,6 +154,77 @@ class DecoderSpec extends Specification {
       decode(0x39,0xFF,0xFF) must beEqualTo(Short.MinValue.toInt*2)
       decode(0x3a,0xFF,0xFF,0xFF,0xFF) must beEqualTo(Int.MinValue.toLong*2)
       decode(0x3b,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF) must beEqualTo(BigInt(Long.MinValue)*2)
+    }
+    "accept definite byte strings" in {
+      decode(0x40) must beEqualTo(ByteString())
+      for (x <- 0x41 to 0x57) {
+        val bs = randomByteString(x - 0x40, assureInvalid = false)
+        decode(bs, x) must beEqualTo(bs)
+      }
+      val bs = randomByteString(0x17, assureInvalid = false)
+      decode(bs, 0x58, 0x17) must beEqualTo(bs)
+      decode(bs, 0x59, 0x00, 0x17) must beEqualTo(bs)
+      decode(bs, 0x5a, 0x00, 0x00, 0x00, 0x17) must beEqualTo(bs)
+      decode(bs, 0x5b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17) must beEqualTo(bs)
+    }
+    "accept indefinite byte strings" in {
+      val numStrs = Random.nextInt(10) + 1
+      val concat = ByteString.newBuilder
+      val bldr = ByteString.newBuilder
+      bldr.putByte(0x5f)
+      for (x <- 1 to numStrs) {
+        val bsLen = Random.nextInt(10)
+        bldr.putByte(0x59)
+        bldr.putByte(0x00).putByte(bsLen.toByte)
+        val bs = randomByteString(bsLen, assureInvalid = false)
+        bldr.append(bs)
+        concat.append(bs)
+      }
+      bldr.putByte(0xff.toByte) // termination signal
+      val bs = bldr.result()
+      val result = decode(bs)
+      result must beEqualTo(concat.result())
+    }
+    "accept definite text strings" in {
+      decode(0x60) must beEqualTo(new String)
+      for (x <- 0x60 to 0x77) {
+        val str = randomString(x - 0x60)
+        val bs = ByteString(str.getBytes(StandardCharsets.UTF_8))
+        decode(bs, x) must beEqualTo(str)
+      }
+      val str = randomString(Random.nextInt(100))
+      val bs = ByteString(str.getBytes)
+      val len = bs.length
+      decode(bs, 0x78, len) must beEqualTo(str)
+      decode(bs, 0x79, 0x00, len) must beEqualTo(str)
+      decode(bs, 0x7a, 0x00, 0x00, 0x00, len) must beEqualTo(str)
+      decode(bs, 0x7b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, len) must beEqualTo(str)
+    }
+    "accept indefinite text strings" in {
+      val numStrs = Random.nextInt(10) + 1
+      val concat = new StringBuilder
+      val bldr = ByteString.newBuilder
+      bldr.putByte(0x7f)
+      for (x <- 1 to numStrs) {
+        val bsLen = Random.nextInt(10)
+        val str = randomString(bsLen)
+        val bs = ByteString(str.getBytes)
+        bldr.putByte(0x79)
+        bldr.putByte(0x00).putByte(bs.length.toByte)
+        bldr.append(bs)
+        concat.append(str)
+      }
+      bldr.putByte(0xff.toByte) // termination signal
+      val bs = bldr.result()
+      val result = decode(bs)
+      result must beEqualTo(concat.result())
+    }
+
+    "accept constant values" in {
+      decode(0xf4) must beEqualTo(false)
+      decode(0xf5) must beEqualTo(true)
+      decode(0xf6) must beEqualTo(CBORNull)
+      decode(0xf7) must beEqualTo(CBORUndefined)
     }
   }
 }
